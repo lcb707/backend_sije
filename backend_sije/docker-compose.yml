@@ -1,0 +1,64 @@
+services:
+  db:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_pw}
+      MYSQL_DATABASE: ${DB_DATABASE:-purchase_orders}
+      MYSQL_USER: ${DB_USERNAME:-app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-app_pw}
+      # datetime(3) 시점 조회 경계 정확성을 위해 컨테이너 타임존은 UTC로 고정
+      TZ: UTC
+    command: --default-time-zone=+00:00
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-p${DB_ROOT_PASSWORD:-root_pw}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    ports:
+      - '${DB_PORT:-3306}:3306'
+    networks:
+      - app_server
+    volumes:
+      - ./dbdata/mysql:/var/lib/mysql
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      APP_PORT: ${APP_PORT:-3000}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-app}
+      DB_PASSWORD: ${DB_PASSWORD:-app_pw}
+      DB_DATABASE: ${DB_DATABASE:-purchase_orders}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+      DB_LOGGING: ${DB_LOGGING:-false}
+    networks:
+      - app_server
+    ports:
+      - '${APP_PORT:-3000}:3000'
+
+  frontend:
+    build:
+      context: ../front
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${FRONT_API_URL:-http://localhost:3000}
+    restart: unless-stopped
+    networks:
+      - app_server
+    depends_on:
+      - app
+    ports:
+      - '${FRONT_PORT:-3001}:3001'
+
+networks:
+  app_server:
+    name: app_default
+    external: true
