@@ -230,6 +230,15 @@ docker exec backend_sije-db-1 mysql -uroot -proot_pw -e \
 make test_go
 ```
 
+혹은 로컬에서 할 경우
+
+```bash
+npm install        # 최초 1회만
+make db
+make test_setting  # 최초 1번만
+npm test
+```
+
 ### 커버하는 시나리오
 
 테스트 스위트 8개 / 57개 케이스. 시간 의존 로직은 `FakeClock` 으로 시각을 고정해 결정론적으로 검증한다.
